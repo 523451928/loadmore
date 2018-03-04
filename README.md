@@ -65,5 +65,6 @@ let loadmoreInstance = new Loadmore({
 
 ## 可以使用loadmoreInstance实例的方法
 | Function | Description |
-| destroy | 所有数据加载完之后调用该方法 |
+| ----- | ----- |
+| destroy | 所有数据加载完之后调用该方法 该方法可以禁用上拉 |
 | refresh | 重置Loadmore |
