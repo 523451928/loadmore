@@ -61,6 +61,7 @@ let loadmoreInstance = new Loadmore({
 
 ## 注意事项
 * Loadmore实例化后会返回Loadmore 对象(loadmoreInstance) 
+* loadmoreInstance.trigger('changeBottomStatus', 'loading') 可以改变上拉的bottomStatus 避免多次调用bottomMethod
 * 注意 top-method方法执行后要重置(loadmoreInstance.onTopLoaded()) bottom-method 方法执行后要重置(loadmoreInstance.onBottomLoaded()) 
 
 ## 可以使用loadmoreInstance实例的方法
@@ -68,3 +69,4 @@ let loadmoreInstance = new Loadmore({
 | ----- | ----- |
 | destroy | 所有数据加载完之后调用该方法 该方法可以禁用上拉 |
 | refresh | 重置Loadmore |
+| trigger | 触发绑定在Loadmore实例上的自定事件 |
