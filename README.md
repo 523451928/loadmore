@@ -14,15 +14,31 @@ npm run dev
 import Loadmore from '../scripts/loadmore.js'
 
 let loadmoreInstance = new Loadmore({
-     el: document.querySelector('.loadmore-content'),
-     crollLoad: false,
-     topMethod() {
-         setTimeout(() => {
-                  loadmoreInstance.onTopLoaded()
-         }, 1000)
-     },
-     bottomMethod: function() {
-           self.getDataList()
-     }
+        el: document.querySelector('.loadmore-content'),
+        crollLoad: false,
+        topDistance: 50,
+        bottomDistance: 50,
+        distanceIndex: 2,
+        topPullText: '下拉刷新',
+        topDropText: '释放更新',
+        topLoadingText: '更新中...',
+        bottomPullText: '上拉加载更多...',
+        bottomDropText: '释放更新',
+        bottomLoadingText: '更新中...',
+        noMoreText: '没有更多了...',
+        autoFill: true,
+        scrollLoad: false,
+        sideSlipDisabled: false,
+        preLoadDistance: 50
+        topMethod() {
+            //todo
+        },
+        bottomMethod: function() {
+           //todo
+        }
 })
 ```
+
+| Option | Description |
+| ----- | ----- |
+| el | String or Element |
