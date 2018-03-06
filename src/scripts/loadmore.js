@@ -96,6 +96,7 @@ let Loadmore = function (opt) {
     this.events = []
     this.runEnvironment = mobileCheck() ? 'mobile' : 'pc'
     this.allBottomLoaded = false
+    this.options.el = opt.el instanceof HTMLElement ? opt.el : document.querySelector(opt.el)
     this.scrollEventTarget = opt.el instanceof HTMLElement ? opt.el : document.querySelector(opt.el)
     this.startY = 0
     this.startScrollTop = 0
