@@ -28,6 +28,8 @@ let loadmoreInstance = new Loadmore({
         noMoreText: '没有更多了...',
         autoFill: true,
         sideSlipDisabled: false,
+        elasticRolling: false,
+        scrollDirection: 'vertical',
         preLoadDistance: 50
         topMethod() {
             //todo
@@ -55,6 +57,8 @@ let loadmoreInstance = new Loadmore({
 | noMoreText | 全部加载完毕提示区域的文字 | String | '没有更多了...' |
 | autoFill | 是否自动加载至充满其容器 | Boolean | false |
 | sideSlipDisabled | 是否禁止当手指滑动为左右方向的时候容器上下滑动 | Boolean | false |
+| elasticRolling | 是否为弹性滚动,会禁止下拉加载更多 | Bollean | true |
+| scrollDirection | 滚动方向,支持上下,左右滚动 | String | vertical |
 | preLoadDistance | 当scrollLoad 为 true时 距离底部预加载的距离(像素) | Number | 50 |
 | topMethod | 下拉刷新执行的方法 | Function | |
 | bottomMethod | 上拉加载更多执行的方法 | Function | |
@@ -62,6 +66,7 @@ let loadmoreInstance = new Loadmore({
 ## 注意事项
 * Loadmore实例化后会返回Loadmore 对象(loadmoreInstance) 
 * loadmoreInstance.trigger('changeBottomStatus', 'loading') 可以改变上拉的bottomStatus 避免多次调用bottomMethod
+* 左右滚动的原理的监听滚动容器的scrollLeft,当滚动到边界时两次的scrollLeft为一致,从而改变容器的translate !滚动容器设置overflow-x: scroll;
 * 注意 top-method方法执行后要重置(loadmoreInstance.onTopLoaded()) bottom-method 方法执行后要重置(loadmoreInstance.onBottomLoaded()) 
 
 ## 可以使用loadmoreInstance实例的方法
@@ -70,3 +75,4 @@ let loadmoreInstance = new Loadmore({
 | destroy | 所有数据加载完之后调用该方法 该方法可以禁用上拉 |
 | refresh | 重置Loadmore |
 | trigger | 触发绑定在Loadmore实例上的自定事件 |
+| scrollTo | 左右滚动设置容器的scrollLeft, 上下滚动设置容器的scrollTop |
