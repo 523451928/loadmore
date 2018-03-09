@@ -44,12 +44,10 @@ function extend(opts, option) {
 }
 let throttle = function (fn, delay) {
     let now, lastExec, timer, context, args
-
     let excute = function () {
         fn.apply(context, args)
         lastExec = now
     }
-
     return function () {
         context = this
         args = arguments
@@ -89,6 +87,8 @@ let Loadmore = function (opt) {
         noMoreText: '没有更多了...',
         autoFill: true,
         scrollLoad: false,
+        elasticRolling: false,
+        scrollDirection: 'vertical',
         sideSlipDisabled: false,
         preLoadDistance: 50
     }
@@ -114,16 +114,18 @@ let Loadmore = function (opt) {
 Loadmore.prototype.init = function () {
     this.scrollEventTarget = this.getScrollEventTarget(this.scrollEventTarget)
     let elm = this.options.el
-    let loadmoreTopElm = document.createElement('div')
-    loadmoreTopElm.className = 'wa-loadmore-top'
-    loadmoreTopElm.innerText = this.options.topPullText
-    this.loadmoreTopElm = loadmoreTopElm
-    elm.insertBefore(loadmoreTopElm, elm.childNodes[0])
-    if (!this.options.scrollLoad) {
-        this.appendBottomDom()
+    if (!this.options.elasticRolling) {
+        let loadmoreTopElm = document.createElement('div')
+        loadmoreTopElm.className = 'wa-loadmore-top'
+        loadmoreTopElm.innerText = this.options.topPullText
+        this.loadmoreTopElm = loadmoreTopElm
+        elm.insertBefore(loadmoreTopElm, elm.childNodes[0])
+        if (!this.options.scrollLoad) {
+            this.appendBottomDom()
+        }
+        this.fillContainer()
     }
     this.bindTouchEvent()
-    this.fillContainer()
     this.on('changeBottomStatus', (str) => {
         this.bottomStatus = str
     })
@@ -133,10 +135,12 @@ Loadmore.prototype.init = function () {
     }
 }
 Loadmore.prototype.changeStatusText = function (direction, text) {
-    if (direction === 'down') {
-        this.loadmoreTopElm.innerText = text
-    } else {
-        this.loadmoreBottomElm.innerText = text
+    if (!this.options.elasticRolling) {
+        if (direction === 'down') {
+            this.loadmoreTopElm.innerText = text
+        } else {
+            this.loadmoreBottomElm.innerText = text
+        }
     }
 }
 Loadmore.prototype.appendBottomDom = function () {
@@ -148,12 +152,15 @@ Loadmore.prototype.appendBottomDom = function () {
     elm.appendChild(loadmoreBottomElm)
 }
 Loadmore.prototype.destroy = function () {
+    console.log('destroy')
     this.setBottomLoadedStatus(true)
     let noMoreDom = document.createElement('div')
     noMoreDom.className = 'wa-nomore-text'
     noMoreDom.innerText = this.options.noMoreText
     this.noMoreDom = noMoreDom
-    this.options.el.appendChild(noMoreDom)
+    if (!document.querySelector('.wa-nomore-text')) {
+        this.options.el.appendChild(noMoreDom)
+    }
     if (!this.options.scrollLoad && this.loadmoreBottomElm) {
         this.options.el.removeChild(this.loadmoreBottomElm)
     }
@@ -163,7 +170,7 @@ Loadmore.prototype.refresh = function () {
     if (!this.options.scrollLoad && !document.querySelector('.wa-loadmore-bottom')) {
         this.appendBottomDom()
     }
-    if (this.noMoreDom) {
+    if (this.noMoreDom && document.querySelector('.wa-nomore-text')) {
         this.options.el.removeChild(this.noMoreDom)
     }
 }
@@ -171,8 +178,13 @@ Loadmore.prototype.setBottomLoadedStatus = function (bool) {
     this.allBottomLoaded = bool
 }
 Loadmore.prototype.scrollTo = function (position) {
-    this.scrollEventTarget.scrollTop = position
+    if (this.options.scrollDirection === 'vertical') {
+        this.scrollEventTarget.scrollTop = position
+    } else {
+        this.options.el.scrollLeft = position
+    }
 }
+
 Loadmore.prototype.bindTouchEvent = function () {
     let self = this
     if (this.runEnvironment === 'mobile') {
@@ -186,6 +198,7 @@ Loadmore.prototype.bindTouchEvent = function () {
     }
 
     let mouseObj = {}
+    let lastLeft = 0
     function startFn(event) {
         if (self.runEnvironment === 'mobile') {
             self.startY = event.touches[0].clientY
@@ -194,14 +207,17 @@ Loadmore.prototype.bindTouchEvent = function () {
             mouseObj.isStart = true
             self.startY = event.clientY
         }
+        lastLeft = null
         self.startScrollTop = self.getScrollTop(self.scrollEventTarget)
+        self.startScrollLeft = self.getScrollLeft(self.scrollEventTarget)
         self.options.el.style.transition = ''
-
     }
+
     function moveFn(event) {
         if (self.startY < self.options.el.getBoundingClientRect().top && self.startY > self.options.el.getBoundingClientRect().bottom) {
             return
         }
+        let direction = getSlideDirection(self.startX, self.startY, self.currentX, self.currentY)
         if (!mouseObj.isStart && self.runEnvironment === 'pc') {
             return
         } else if (mouseObj.isStart && self.runEnvironment === 'pc') {
@@ -209,41 +225,53 @@ Loadmore.prototype.bindTouchEvent = function () {
         } else {
             self.currentY = event.touches[0].clientY
             self.currentX = event.touches[0].clientX
-            let direction = getSlideDirection(self.startX, self.startY, self.currentX, self.currentY)
+
             if (self.options.sideSlipDisabled && direction === 3 || self.options.sideSlipDisabled && direction === 4) {
                 return
             }
         }
-
         let distance = (self.currentY - self.startY) / self.distanceIndex
-        self.direction = distance > 0 ? 'down' : 'up'
-        if (typeof self.options.topMethod == 'function' && self.direction == 'down' && self.getScrollTop(self.scrollEventTarget) == 0 && self.topStatus != 'loading') {
-            event.stopPropagation()
-            event.preventDefault()
-            self.translate = distance - self.startScrollTop
-            if (self.translate < 0) {
-                self.translate = 0
+        let distanceX = (self.currentX - self.startX) / self.distanceIndex
+        self.direction = direction == 2 ? 'down' : direction == 1 ? 'up' : direction == 3 ? 'left' : 'right'
+        if (self.options.scrollDirection === 'vertical') {
+            if (typeof self.options.topMethod == 'function' && self.direction == 'down' && self.getScrollTop(self.scrollEventTarget) == 0 && self.topStatus != 'loading' || self.direction == 'down' && self.options.elasticRolling && self.getScrollTop(self.scrollEventTarget) == 0) {
+                event.stopPropagation()
+                event.preventDefault()
+                self.translate = distance - self.startScrollTop
+                if (self.translate < 0) {
+                    self.translate = 0
+                }
+                self.topStatus = self.translate > self.options.topDistance ? 'drop' : 'pull'
+                let topStatusText = self.topStatus === 'drop' ? self.options.topDropText : self.options.topPullText
+                self.changeStatusText('down', topStatusText)
             }
-            self.topStatus = self.translate > self.options.topDistance ? 'drop' : 'pull'
-            let topStatusText = self.topStatus === 'drop' ? self.options.topDropText : self.options.topPullText
-            self.changeStatusText('down', topStatusText)
-        }
-        if (self.direction == 'up') {
-            self.bottomReached = self.checkBottomReached()
-        }
-        if (typeof self.options.bottomMethod == 'function' && self.direction == 'up' && self.bottomStatus != 'loading' && self.bottomReached && !self.allBottomLoaded && !self.options.scrollLoad) {
-            event.preventDefault()
-            event.stopPropagation()
-            self.translate = self.getScrollTop(self.scrollEventTarget) - self.startScrollTop + distance
-            if (self.translate > 0) {
-                self.translate = 0
+            if (self.direction == 'up') {
+                self.bottomReached = self.checkBottomReached()
             }
-            self.bottomStatus = self.translate < -self.options.bottomDistance ? 'drop' : 'pull'
-            let bottomStatusText = self.bottomStatus === 'drop' ? self.options.bottomDropText : self.options.bottomPullText
-            self.changeStatusText('up', bottomStatusText)
+            if (typeof self.options.bottomMethod == 'function' && self.direction == 'up' && self.bottomStatus != 'loading' && self.bottomReached && !self.allBottomLoaded && !self.options.scrollLoad || self.direction == 'up' && self.options.elasticRolling && self.bottomReached) {
+                event.preventDefault()
+                event.stopPropagation()
+                self.translate = self.getScrollTop(self.scrollEventTarget) - self.startScrollTop + distance
+                if (self.translate > 0) {
+                    self.translate = 0
+                }
+                self.bottomStatus = self.translate < -self.options.bottomDistance ? 'drop' : 'pull'
+                let bottomStatusText = self.bottomStatus === 'drop' ? self.options.bottomDropText : self.options.bottomPullText
+                self.changeStatusText('up', bottomStatusText)
+            }
+            self.trigger('translate', self.translate)
+            self.setElmTranslate(0, self.translate)
+        } else {
+            let translateX = 0
+            if (self.direction === 'right' && self.options.el.scrollLeft == lastLeft) {
+                translateX = distanceX - self.startScrollLeft
+            }
+            if (self.direction === 'left' && self.options.el.scrollLeft == lastLeft) {
+                translateX = self.getScrollLeft(self.scrollEventTarget) - self.startScrollLeft + distanceX
+            }
+            self.setElmTranslate(translateX, 0)
         }
-        self.trigger('translate', self.translate)
-        self.setElmTranslate(self.translate)
+        lastLeft = self.options.el.scrollLeft
     }
     function endFn() {
         self.options.el.style.transition = 'all .3s'
@@ -253,12 +281,17 @@ Loadmore.prototype.bindTouchEvent = function () {
             if (self.topStatus == 'drop') {
                 self.translate = 50
                 self.topStatus = 'loading'
-                self.changeStatusText('down', self.options.topLoadingText)
-                self.options.topMethod()
-                // self.onTopLoaded()
+                if (!self.options.elasticRolling) {
+                    self.changeStatusText('down', self.options.topLoadingText)
+                    self.options.topMethod()
+                } else {
+                    self.onTopLoaded()
+                }
             } else {
                 self.topStatus = 'pull'
-                self.changeStatusText('down', self.options.topPullText)
+                if (!self.options.elasticRolling) {
+                    self.changeStatusText('down', self.options.topPullText)
+                }
                 self.translate = 0
             }
         }
@@ -267,16 +300,21 @@ Loadmore.prototype.bindTouchEvent = function () {
             if (self.bottomStatus == 'drop') {
                 self.translate = -50
                 self.bottomStatus = 'loading'
-                self.changeStatusText('up', self.options.bottomLoadingText)
-                self.options.bottomMethod()
-                // self.onBottomLoaded()
+                if (!self.options.elasticRolling) {
+                    self.changeStatusText('up', self.options.bottomLoadingText)
+                    self.options.bottomMethod()
+                } else {
+                    self.onBottomLoaded()
+                }
             } else {
                 self.bottomStatus = 'pull'
-                self.changeStatusText('up', self.options.bottomPullText)
+                if (!self.options.elasticRolling) {
+                    self.changeStatusText('up', self.options.bottomPullText)
+                }
                 self.translate = 0
             }
         }
-        self.setElmTranslate(self.translate)
+        self.setElmTranslate(0, self.translate)
     }
 }
 Loadmore.prototype.fillContainer = function () {
@@ -296,8 +334,8 @@ Loadmore.prototype.fillContainer = function () {
         }, 100)
     }
 }
-Loadmore.prototype.setElmTranslate = function (translate) {
-    this.options.el.style.transform = `translateY(${translate}px)`
+Loadmore.prototype.setElmTranslate = function (translateX, translateY) {
+    this.options.el.style.transform = `translate(${translateX}px, ${translateY}px)`
 }
 Loadmore.prototype.onBottomLoaded = function () {
     this.bottomStatus = 'pull'
@@ -305,26 +343,27 @@ Loadmore.prototype.onBottomLoaded = function () {
     if (!this.options.scrollLoad) {
         this.changeStatusText('up', this.options.bottomPullText)
     }
-    if (this.scrollEventTarget == window) {
-        if (document.documentElement.scrollTop) {
-            document.documentElement.scrollTop += 50
-        }
-    } else {
-        if (this.scrollEventTarget.scrollTop) {
-            this.scrollEventTarget.scrollTop += 50
+    if (!this.options.elasticRolling) {
+        if (this.scrollEventTarget == window) {
+            if (document.documentElement.scrollTop) {
+                document.documentElement.scrollTop += 50
+            }
+        } else {
+            if (this.scrollEventTarget.scrollTop) {
+                this.scrollEventTarget.scrollTop += 50
+            }
         }
     }
     this.translate = 0
     this.options.el.style.transition = ''
-    this.setElmTranslate(this.translate)
-    if (!this.allBottomLoaded && !this.containerFilled) {
+    this.setElmTranslate(0, this.translate)
+    if (!this.allBottomLoaded && !this.containerFilled && !this.options.elasticRolling) {
         this.fillContainer()
     }
-
 }
 Loadmore.prototype.onTopLoaded = function () {
     this.translate = 0
-    this.setElmTranslate(this.translate)
+    this.setElmTranslate(0, this.translate)
     setTimeout(() => {
         this.topStatus = 'pull'
     }, 200)
@@ -355,6 +394,13 @@ Loadmore.prototype.getScrollTop = function (el) {
         return Math.max(window.pageYOffset || 0, document.documentElement.scrollTop)
     } else {
         return el.scrollTop
+    }
+}
+Loadmore.prototype.getScrollLeft = function (el) {
+    if (el == window) {
+        return Math.max(window.pageXOffset || 0, document.documentElement.scrollLeft)
+    } else {
+        return el.scrollLeft
     }
 }
 Loadmore.prototype.getScrollEventTarget = function (element) {
