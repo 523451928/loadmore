@@ -1,7 +1,7 @@
 # loadmore
 原生js写的移动端下拉更新,上拉加载更多的类(可以设置为弹性滚动)
 
-##查看demo
+## 查看demo
 ```
 git clone https://github.com/523451928/loadmore.git
 cd loadmore
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-##loadmore使用方法
+## loadmore使用方法
 ```
 import Loadmore from '../scripts/loadmore.js'
 
