@@ -239,6 +239,8 @@ Loadmore.prototype.bindTouchEvent = function () {
                 event.preventDefault()
                 self.translate = distance - self.startScrollTop
                 if (self.translate < 0) {
+                    self.startScrollTop = 0
+                    self.startY = self.currentY
                     self.translate = 0
                 }
                 self.topStatus = self.translate > self.options.topDistance ? 'drop' : 'pull'
@@ -253,6 +255,8 @@ Loadmore.prototype.bindTouchEvent = function () {
                 event.stopPropagation()
                 self.translate = self.getScrollTop(self.scrollEventTarget) - self.startScrollTop + distance
                 if (self.translate > 0) {
+                    self.startY = self.currentY
+                    self.startScrollTop = self.getScrollTop(self.scrollEventTarget)
                     self.translate = 0
                 }
                 self.bottomStatus = self.translate < -self.options.bottomDistance ? 'drop' : 'pull'
@@ -263,11 +267,21 @@ Loadmore.prototype.bindTouchEvent = function () {
             self.setElmTranslate(0, self.translate)
         } else {
             let translateX = 0
-            if (self.direction === 'right' && self.options.el.scrollLeft == lastLeft) {
+            if (self.direction === 'right' && self.options.el.scrollLeft == 0) {
                 translateX = distanceX - self.startScrollLeft
+                if (translateX < 0) {
+                    self.startScrollLeft = 0
+                    self.startX = self.currentX
+                    translateX = 0
+                }
             }
             if (self.direction === 'left' && self.options.el.scrollLeft == lastLeft) {
                 translateX = self.getScrollLeft(self.scrollEventTarget) - self.startScrollLeft + distanceX
+                if (translateX > 0) {
+                    self.startScrollLeft = self.getScrollLeft(self.scrollEventTarget)
+                    self.startX = self.currentX
+                    translateX = 0
+                }
             }
             self.setElmTranslate(translateX, 0)
         }
