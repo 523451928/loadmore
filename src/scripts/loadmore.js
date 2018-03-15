@@ -1,4 +1,4 @@
-/* create by mou 2018/2/25 */
+/* created by mou on 2018/2/25 */
 /* eslint-disable */
 function mobileCheck() {
     let check = false;
